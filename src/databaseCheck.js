@@ -31,6 +31,21 @@ async function checkDatabase(database_name) {
   }
 }
 
+async function checkIfColumnExists(columnName, tableName) {
+  try {
+    const result = await pool.query({
+      text: `
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name='${tableName}' and column_name='${columnName}';`,
+    });
+
+    return result.rowCount > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
 // check if table exists
 async function checkTable(table_name) {
   let query = {
@@ -47,6 +62,7 @@ async function checkTable(table_name) {
                     tenant varchar(255) NOT NULL, \
                     username varchar(255) NOT NULL, \
                     configuration json NOT NULL, \
+                    favorite_devices json, \
                     last_update timestamp WITH time zone DEFAULT CURRENT_TIMESTAMP, \
                     CONSTRAINT unique_user PRIMARY KEY (tenant, username) \
                  );',
@@ -54,6 +70,14 @@ async function checkTable(table_name) {
       await client.query(query);
     } else {
       LOG.info(`Table ${table_name}  already exists.`);
+      if (!checkIfColumnExists('favorite_devices', 'user_config')) {
+        LOG.info(`Creating favorite_devices in the ${table_name} table`);
+        await client.query({
+          text: 'ALTER TABLE user_config ADD COLUMN favorite_devices json',
+        });
+      } else {
+        LOG.info(`The column favorite_devices of the ${table_name} table already exists`);
+      }
     }
     LOG.info(`Table ${table_name} is available to use.`);
     process.exit();

@@ -4,6 +4,8 @@ type Device {
     id: String!
     label: String!
     attrs: [Attr]
+    created: String!
+    updated: String
  }
  #Value types used by the platform#
  enum ValueType {
